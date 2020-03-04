@@ -10,32 +10,22 @@ import ConnectFourWithTwist
 
 
 {- NOTES:
-
 -- DO NOT CHANGE THE NAMES OR TYPE DEFINITIONS OF THE FUNCTIONS!
 You can write new auxillary functions, but don't change the names or type definitions
 of the functions which you are asked to implement.
-
 -- Comment your code.
-
 -- You should submit this file when you have finished the assignment.
-
 -- The deadline is the  10th March 2020 at 3pm.
-
 -- See the assignment sheet and document files for more information on the predefined game functions.
-
 -- See the README for description of a user interface to test your code.
-
 -- See www.haskell.org for haskell revision.
-
 -- Useful haskell topics, which you should revise:
 -- Recursion
 -- The Maybe monad
 -- Higher-order functions
 -- List processing functions: map, fold, filter, sortBy ...
-
 -- See Russell and Norvig Chapters 3 for search algorithms,
 -- and Chapter 5 for game search algorithms.
-
 -}
 
 -- Section 1: Uniform Search
@@ -89,13 +79,6 @@ explored point (x:exploredList) = if (point == x) then True
 -- and the checkArrival function to check whether a node is a destination position.
 -- The function should search nodes using a breadth first search order.
 
-lengthB::[Branch] -> Int
-lengthB [] = 0
-lengthB (b:branches) = 1 + lengthB branches
-
-lengthN::[Node] -> Int
-lengthN [] = 0
-lengthN (n:nodes) = 1 + lengthN nodes
 
 breadthFirstSearch::Graph -> Node->(Branch ->Graph -> [Branch])->[Branch]->[Node]->Maybe Branch
 breadthFirstSearch g destination next [] [] = breadthFirstSearch g destination next [[0]] []
@@ -116,8 +99,19 @@ breadthFirstSearch g destination next branches exploredList =
 depthLimitedSearch::Graph ->Node->(Branch ->Graph-> [Branch])->[Branch]-> Int->[Node]-> Maybe Branch
 depthLimitedSearch g destination next branches  d exploredList = undefined
 
-
-
+depthFirstSearch::Graph ->Node->(Branch ->Graph-> [Branch])->[Branch]-> Int-> [Node]-> Maybe Branch
+depthFirstSearch g destination next [] d [] = depthFirstSearch g destination next [[0]] d []
+depthFirstSearch g destination next [] d exploredList = Nothing
+depthFirstSearch g destination next branches d exploredList = 
+                                    let y = head branches
+                                        x = head y
+                                        bool = checkArrival x destination
+                                        ans = explored x exploredList
+                                    in if bool == True then Just y
+                                       else if (length y > d || ans == True) then depthFirstSearch g destination next (tail branches) d exploredList
+                                       else depthFirstSearch g destination next ((next y g) ++ branches) d (x:exploredList)
+                                       
+                                       
 -- | Section 4: Informed search
 
 
@@ -126,14 +120,16 @@ depthLimitedSearch g destination next branches  d exploredList = undefined
 -- | The cost function calculates the current cost of a trace. The cost for a single transition is given in the adjacency matrix.
 -- The cost of a whole trace is the sum of all relevant transition costs.
 cost :: Graph ->Branch  -> Int
-cost gr branch = undefined
+cost gr [] = 0
+cost gr [x] = 0
+cost gr (x:y:branch) = (gr !! (numNodes*y+x)) + cost gr (y:branch) 
 
 
     
 -- | The getHr function reads the heuristic for a node from a given heuristic table.
 -- The heuristic table gives the heuristic (in this case straight line distance) and has one entry per node. It is ordered by node (e.g. the heuristic for node 0 can be found at index 0 ..)  
 getHr:: [Int]->Node->Int
-getHr hrTable node = undefined  
+getHr hrTable node = hrTable !! node  
 
 
 -- | A* Search
