@@ -124,7 +124,6 @@ cost gr [] = 0
 cost gr [x] = 0
 cost gr (x:y:branch) = (gr !! (numNodes*y+x)) + cost gr (y:branch) 
 
-
     
 -- | The getHr function reads the heuristic for a node from a given heuristic table.
 -- The heuristic table gives the heuristic (in this case straight line distance) and has one entry per node. It is ordered by node (e.g. the heuristic for node 0 can be found at index 0 ..)  
@@ -138,7 +137,22 @@ getHr hrTable node = hrTable !! node
 ---- Nodes with a lower heuristic value should be searched before nodes with a higher heuristic value.
 
 aStarSearch::Graph->Node->(Branch->Graph -> [Branch])->([Int]->Node->Int)->[Int]->(Graph->Branch->Int)->[Branch]-> [Node]-> Maybe Branch
-aStarSearch g destination next getHr hrTable cost branches exploredList =undefined
+aStarSearch g destination next getHr hrTable cost branches exploredList = 
+                                    let y = head branches
+                                        x = head y
+                                        bool = checkArrival x destination
+                                        ans = explored x exploredList
+                                    in if bool == True then Just y
+                                       else sortBranches $ zip $ map(compute g branch hrTable) (branch:branches)
+
+sumHr:: [Int]->Branch->Int
+sumHr hrTable [] = 0
+sumHr hrTable (x:xs) = getHr hrTable x + sumHr hrTable xs
+
+compute::Graph->Branch->[Int]->Int
+compute g [] hrTable = 0
+compute g branch hrTable = (cost g branch) + (sumHr hrTable branch)
+
 
 -- | Section 5: Games
 -- See ConnectFourWithTwist.hs for more detail on  functions that might be helpful for your implementation. 
