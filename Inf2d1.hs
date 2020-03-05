@@ -142,8 +142,9 @@ aStarSearch g destination next getHr hrTable cost branches exploredList =
                                         x = head y
                                         bool = checkArrival x destination
                                         ans = explored x exploredList
+                                        list = sortBranches $ zip $ [compute g branch hrTable | branch <- branches] branches
                                     in if bool == True then Just y
-                                       else sortBranches $ zip $ map(compute g branch hrTable) (branch:branches)
+                                       else Nothing
 
 sumHr:: [Int]->Branch->Int
 sumHr hrTable [] = 0
@@ -152,6 +153,9 @@ sumHr hrTable (x:xs) = getHr hrTable x + sumHr hrTable xs
 compute::Graph->Branch->[Int]->Int
 compute g [] hrTable = 0
 compute g branch hrTable = (cost g branch) + (sumHr hrTable branch)
+
+sortBranches::[(Int, Branch)]->[(Int, Branch)]
+sortBranches [] = []
 
 
 -- | Section 5: Games
