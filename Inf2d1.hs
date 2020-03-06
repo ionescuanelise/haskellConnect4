@@ -36,19 +36,18 @@ type Node = Int
 type Branch = [Node]
 type Graph= [Node]
 
-numNodes::Int
-numNodes = 5
+-- numNodes::Int
+-- numNodes = 13
 
 
 -- The next function should return all the possible continuations of input search branch through the graph.
 -- Your function should return an empty list if the input search branch is empty.
 -- This implementation of next function does not backtrace branches.
 
-
 get::Node -> Int -> Graph -> [Node]
-get node x g = if (node + x >= ((numNodes*numNodes) - 1)) then []
+get node x g = if (node + x >= (((ceiling . sqrt . fromIntegral . length $ g)*(ceiling . sqrt . fromIntegral . length $ g)) - 1)) then []
                else if (g !! (node + x)) > 0 then x : get node (x+1) g 
-               else if (x /= numNodes) then get node (x+1) g
+               else if (x /= (ceiling . sqrt . fromIntegral . length $ g)) then get node (x+1) g
                else []
 
 
@@ -60,7 +59,7 @@ append xs (y:ys) = (y : xs) : (append xs ys)
 next::Branch -> Graph ->  [Branch]
 next [] g = []
 next xs g = append xs (get (numNodes * (head xs)) 0 g) 
-
+    where numNodes = (ceiling . sqrt . fromIntegral . length $ g)
 
 
 -- |The checkArrival function should return true if the current location of the robot is the destination, and false otherwise.
@@ -82,7 +81,7 @@ explored point (x:exploredList) = if (point == x) then True
 
 breadthFirstSearch::Graph -> Node->(Branch ->Graph -> [Branch])->[Branch]->[Node]->Maybe Branch
 breadthFirstSearch g destination next [] [] = breadthFirstSearch g destination next [[0]] []
-breadthFirstSearch g destination next [] exploredList = Nothing
+breadthFirstSearch g destination next [] _ = Nothing
 breadthFirstSearch g destination next branches exploredList = 
                                     let y = head branches
                                         x = head y                                                                
@@ -96,22 +95,19 @@ breadthFirstSearch g destination next branches exploredList =
 -- | Depth-Limited Search
 -- The depthLimitedSearch function is similiar to the depthFirstSearch function,
 -- except its search is limited to a pre-determined depth, d, in the search tree.
-depthLimitedSearch::Graph ->Node->(Branch ->Graph-> [Branch])->[Branch]-> Int->[Node]-> Maybe Branch
-depthLimitedSearch g destination next branches  d exploredList = undefined
 
-depthFirstSearch::Graph ->Node->(Branch ->Graph-> [Branch])->[Branch]-> Int-> [Node]-> Maybe Branch
-depthFirstSearch g destination next [] d [] = depthFirstSearch g destination next [[0]] d []
-depthFirstSearch g destination next [] d exploredList = Nothing
-depthFirstSearch g destination next branches d exploredList = 
+depthLimitedSearch::Graph ->Node->(Branch ->Graph-> [Branch])->[Branch]-> Int-> [Node]-> Maybe Branch
+depthLimitedSearch g destination next [] d [] = depthLimitedSearch g destination next [[0]] d []
+depthLimitedSearch g destination next [] d exploredList = Nothing
+depthLimitedSearch g destination next branches d exploredList = 
                                     let y = head branches
                                         x = head y
                                         bool = checkArrival x destination
                                         ans = explored x exploredList
                                     in if bool == True then Just y
-                                       else if (length y > d || ans == True) then depthFirstSearch g destination next (tail branches) d exploredList
-                                       else depthFirstSearch g destination next ((next y g) ++ branches) d (x:exploredList)
-                                       
-                                       
+                                       else if (length y > d || ans == True) then depthLimitedSearch g destination next (tail branches) d exploredList
+                                       else depthLimitedSearch g destination next ((next y g) ++ branches) d (x:exploredList)
+                                                         
 -- | Section 4: Informed search
 
 
@@ -122,12 +118,16 @@ depthFirstSearch g destination next branches d exploredList =
 cost :: Graph ->Branch  -> Int
 cost gr [] = 0
 cost gr [x] = 0
-cost gr (x:y:branch) = (gr !! (numNodes*y+x)) + cost gr (y:branch) 
+cost gr (x:y:branch) = if (gr !! (y*numNodes+x) > 0) then gr !! (y*numNodes+x) + cost gr (y:branch)
+                       else maxBound `div` 2
+                       where numNodes = ceiling . sqrt . fromIntegral . length $ gr
+
 
     
 -- | The getHr function reads the heuristic for a node from a given heuristic table.
 -- The heuristic table gives the heuristic (in this case straight line distance) and has one entry per node. It is ordered by node (e.g. the heuristic for node 0 can be found at index 0 ..)  
 getHr:: [Int]->Node->Int
+getHr [] _ = 0
 getHr hrTable node = hrTable !! node  
 
 
@@ -137,25 +137,31 @@ getHr hrTable node = hrTable !! node
 ---- Nodes with a lower heuristic value should be searched before nodes with a higher heuristic value.
 
 aStarSearch::Graph->Node->(Branch->Graph -> [Branch])->([Int]->Node->Int)->[Int]->(Graph->Branch->Int)->[Branch]-> [Node]-> Maybe Branch
+aStarSearch g destination next getHr hrTable cost [] [] = aStarSearch g destination next getHr hrTable cost [[0]] []
 aStarSearch g destination next getHr hrTable cost branches exploredList = 
                                     let y = head branches
                                         x = head y
                                         bool = checkArrival x destination
                                         ans = explored x exploredList
-                                        list = sortBranches $ zip $ [compute g branch hrTable | branch <- branches] branches
                                     in if bool == True then Just y
-                                       else Nothing
-
-sumHr:: [Int]->Branch->Int
-sumHr hrTable [] = 0
-sumHr hrTable (x:xs) = getHr hrTable x + sumHr hrTable xs
+                                       else if ans == True then aStarSearch g destination next getHr hrTable cost (tail sortedList) exploredList
+                                       else aStarSearch g destination next getHr hrTable cost sortedList (x:exploredList)
+                                    where sortedList = isort g hrTable (branches ++ (next (head branches) g))
 
 compute::Graph->Branch->[Int]->Int
 compute g [] hrTable = 0
-compute g branch hrTable = (cost g branch) + (sumHr hrTable branch)
+compute g branch hrTable = (cost g branch) + (getHr hrTable (head branch))
 
-sortBranches::[(Int, Branch)]->[(Int, Branch)]
-sortBranches [] = []
+
+insert::Graph ->[Int] ->Branch ->[Branch] ->[Branch]
+insert g hrTable x [] = [x]
+insert g hrTable x (y:ys) = if ((compute g x hrTable) <= (compute g y hrTable)) then x:y:ys
+                            else y:(insert g hrTable x ys)
+
+
+isort::Graph ->[Int] ->[Branch] ->[Branch]
+isort g hrTable [] = []
+isort g hrTable (b:branches) = insert g hrTable b (isort g hrTable branches)
 
 
 -- | Section 5: Games
@@ -169,7 +175,9 @@ sortBranches [] = []
 
 -- The function determines the score of a terminal state, assigning it a value of +1, -1 or 0:
 eval :: Game -> Int
-eval game = undefined
+eval game = if checkWin game maxPlayer then 1
+            else if checkWin game minPlayer then (-1)
+            else 0
 
 -- | The alphabeta function should return the minimax value using alphabeta pruning.
 -- The eval function should be used to get the value of a terminal state. 
