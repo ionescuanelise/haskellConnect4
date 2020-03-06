@@ -80,17 +80,18 @@ explored point (x:exploredList) = if (point == x) then True
 
 
 breadthFirstSearch::Graph -> Node->(Branch ->Graph -> [Branch])->[Branch]->[Node]->Maybe Branch
+breadthFirstSearch [] _ _ _ _ = Nothing
 breadthFirstSearch g destination next [] [] = breadthFirstSearch g destination next [[0]] []
 breadthFirstSearch g destination next [] _ = Nothing
 breadthFirstSearch g destination next branches exploredList = 
                                     let y = head branches
                                         x = head y                                                                
                                         bool = checkArrival x destination
-                                        ans = explored x exploredList
-                                    in if bool == True then Just y
-                                       else if ans == False then breadthFirstSearch g destination next (branches ++ (next y g)) (x:exploredList)
-                                       else breadthFirstSearch g destination next (tail branches) exploredList          
-
+                                        ans = explored x exploredList         
+                                    in if (ans == False) then
+                                            if (bool == True) then Just y
+                                            else breadthFirstSearch g destination next (branches ++ (next y g)) (x:exploredList)
+                                       else breadthFirstSearch g destination next (tail branches) exploredList
 
 -- | Depth-Limited Search
 -- The depthLimitedSearch function is similiar to the depthFirstSearch function,
@@ -104,7 +105,7 @@ depthLimitedSearch g destination next branches d exploredList =
                                         x = head y
                                         bool = checkArrival x destination
                                         ans = explored x exploredList
-                                    in if bool == True then Just y
+                                    in if (bool == True && ans == False) then Just y
                                        else if (length y > d || ans == True) then depthLimitedSearch g destination next (tail branches) d exploredList
                                        else depthLimitedSearch g destination next ((next y g) ++ branches) d (x:exploredList)
                                                          
