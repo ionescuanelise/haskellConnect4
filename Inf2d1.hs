@@ -105,8 +105,9 @@ depthLimitedSearch g destination next branches d exploredList =
                                         x = head y
                                         bool = checkArrival x destination
                                         ans = explored x exploredList
-                                    in if (bool == True && ans == False) then Just y
-                                       else if (length y > d || ans == True) then depthLimitedSearch g destination next (tail branches) d exploredList
+                                    in if (bool == True && length y <= (d+1)) then Just y
+                                       else if (length y > d) then depthLimitedSearch g destination next (tail branches) d (take (length (head(tail branches))) exploredList)
+                                       else if (ans == True) then depthLimitedSearch g destination next (tail branches) d exploredList
                                        else depthLimitedSearch g destination next ((next y g) ++ branches) d (x:exploredList)
                                                          
 -- | Section 4: Informed search
@@ -149,20 +150,6 @@ aStarSearch g destination next getHr hrTable cost branches exploredList =
                                        else aStarSearch g destination next getHr hrTable cost sortedList (x:exploredList)
                                     where sortedList = isort g hrTable (branches ++ (next (head branches) g))
 
-compute::Graph->Branch->[Int]->Int
-compute g [] hrTable = 0
-compute g branch hrTable = (cost g branch) + (getHr hrTable (head branch))
-
-
-insert::Graph ->[Int] ->Branch ->[Branch] ->[Branch]
-insert g hrTable x [] = [x]
-insert g hrTable x (y:ys) = if ((compute g x hrTable) <= (compute g y hrTable)) then x:y:ys
-                            else y:(insert g hrTable x ys)
-
-
-isort::Graph ->[Int] ->[Branch] ->[Branch]
-isort g hrTable [] = []
-isort g hrTable (b:branches) = insert g hrTable b (isort g hrTable branches)
 
 
 -- | Section 5: Games
@@ -183,8 +170,31 @@ eval game = if checkWin game maxPlayer then 1
 -- | The alphabeta function should return the minimax value using alphabeta pruning.
 -- The eval function should be used to get the value of a terminal state. 
 alphabeta:: Role -> Game -> Int
-alphabeta  player game = undefined
+alphabeta player game | player == maxPlayer = maxValue game (-2) 2
+                      | otherwise = minValue game (-2) 2
 
+maxValue::Game ->Int ->Int ->Int
+maxValue g a b | terminal g = eval g
+               | otherwise = helperMaxFct (movesAndTurns g maxPlayer) (-2) a b (switch maxPlayer)
+
+
+minValue::Game ->Int ->Int ->Int
+minValue g a b | terminal g = eval g
+               | otherwise = helperMinFct (movesAndTurns g minPlayer) 2 a b (switch minPlayer)
+
+
+helperMaxFct::[Game] ->Int ->Int ->Int ->Role ->Int
+helperMaxFct [] v a b r = v
+helperMaxFct (g:games) v a b r | v >= b = v
+                               | otherwise = helperMaxFct games (max v (maxValue g a b)) (max v a) b r
+                          
+
+
+helperMinFct::[Game] ->Int ->Int ->Int ->Role ->Int
+helperMinFct [] v a b r = v
+helperMinFct (g:games) v a b r | v <= a = v
+                               | otherwise = helperMinFct games (min v (minValue g a b)) a (min b v) r
+                          
 
 -- | OPTIONAL!
 -- You can try implementing this as a test for yourself or if you find alphabeta pruning too hard.
@@ -194,8 +204,26 @@ alphabeta  player game = undefined
 -- The eval function should be used to get the value of a terminal state.
 minimax:: Role -> Game -> Int
 minimax player game=undefined
-{- Auxiliary Functions
+--{ Auxiliary Functions
 -- Include any auxiliary functions you need for your algorithms below.
 -- For each function, state its purpose and comment adequately.
 -- Functions which increase the complexity of the algorithm will not get additional scores
--}
+
+
+--Auxiliary functions for A-Star Search
+
+compute::Graph->Branch->[Int]->Int
+compute g [] hrTable = 0   
+compute g branch hrTable = (cost g branch) + (getHr hrTable (head branch))    --computing the total cost for a given branch
+
+
+insert::Graph ->[Int] ->Branch ->[Branch] ->[Branch]     --helper function for insertion sort
+insert g hrTable x [] = [x]
+insert g hrTable x (y:ys) = if ((compute g x hrTable) <= (compute g y hrTable)) then x:y:ys
+                            else y:(insert g hrTable x ys)
+
+isort::Graph ->[Int] ->[Branch] ->[Branch]      --insertion sort
+isort g hrTable [] = []
+isort g hrTable (b:branches) = insert g hrTable b (isort g hrTable branches)
+
+--}
